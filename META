@@ -1,0 +1,5 @@
+description = "Pocengine value"
+requires = "str,unix,extlib,lua-ml,xml-light"
+version = "0.1"
+archive(byte) = "pocvalue.cma"
+archive(native) = "pocvalue.cmxa"
