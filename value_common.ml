@@ -76,6 +76,9 @@ class ['a] generic_object_handler=
 object(self)
   val mutable objs=Hashtbl.create 2
 
+  method clear()=
+    Hashtbl.clear objs;
+
   method add_object (id:string option) (o:'a)=
     let nid=
       (match id with
