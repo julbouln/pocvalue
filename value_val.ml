@@ -279,10 +279,6 @@ object(self)
 (* NOT IMPLEMENTED *)
   method from_xml_string s=
     ()
-(*
-    let x=Xml.parse_string s in
-      self#from_xml x
-*)
 
   method from_xml x=
     self#set_id x#tag;
@@ -299,34 +295,17 @@ object(self)
 	  self#set_val (nm) v;
 
     ) childs;
-(*
-    self#set_id (Xml.tag x);
-    let childs=Xml.children x in
-    let i=ref 0 in
-    List.iter (
-      fun c->
-	let v=xmlto c in
-	  
-	let nm=
-	  (try
-	     (`String (Xml.attrib c "name")) 
-	   with Xml.No_attribute v-> i:= !i+1;`Int (!i-1)) in
-	  self#set_val (nm) v;
 
-
-    ) childs;
-*)
   method to_xml_string=
     let x=self#to_xml in
       x#to_string
-(*      Xml.to_string x*)
  
   method to_xml=
     let n=new xml_node in
       self#foreach_val (
 	fun k v ->
 	  let cn=xmlfrom v in
-	    n#add_child cn#to_node
+	    n#add_child cn
       );
       n
 (*      self#foreach_val (
