@@ -19,7 +19,10 @@
 
 open Value_common;;
 
-(** Oo style lua-ml *)
+(** Lua object representation *)
+
+
+(** lua-ml related *)
 
 module T  = Lua.Lib.Combine.T1 (Luaiolib.T)
 module WT = Lua.Lib.WithType (T)
@@ -28,17 +31,19 @@ module C  = Lua.Lib.Combine.C4 (Luaiolib.Make (T.TV1)) (Luacamllib.Make(T.TV1))
 			       
 module I = Lua.MakeInterp (Lua.Parser.MakeStandard) (Lua.MakeEval (T) (C))
 
-
-
 module OLuaVal = I.Value
 let ( **-> ) = OLuaVal. ( **-> )
 let ( **->> ) x y = x **-> OLuaVal.result y
 
 (** lua classes *)
 
+(** interpret string *)
 class lua_interp=
 object(self)
+(** a list of vals in ocaml *)
 val mutable vals=DynArray.create();
+
+(** the interpreter *)
 val mutable interp=I.mk()
 
 initializer
@@ -74,18 +79,23 @@ method parse e= I.dostring interp e
 
 end;;
 
+
+(** lua object part *)
+
+(** exceptions *)
+
 exception Lua_not_found of string;;
 exception Lua_bad_type of string;;
 exception Lua_error of string*string*string;;
 
-
+(** convert luaval to string *)
 let string_of_luaval=function
   | OLuaVal.String s->s
   | OLuaVal.Number s->string_of_float s
   | OLuaVal.Nil -> "nil"
   | _ -> raise (Lua_bad_type "string");;
 
-
+(** the lua obj *)
 class lua_obj=
 object(self)
   val mutable interp=new lua_interp
@@ -171,6 +181,7 @@ object(self)
 
 end;;
 
+(** to be integrated in objects *)
 class virtual lua_object=
 object(self)
   val mutable lua=new lua_obj
@@ -195,25 +206,3 @@ object(self)
 
 end;;
 
-
-(*
-let test=new lua_interp in
-test#set_module_val "Test" "test" (OLuaVal.efunc (OLuaVal.string **->> OLuaVal.string) Sys.getenv);
-test#set_module_val "Test" "test2" (OLuaVal.efunc (OLuaVal.string **->> OLuaVal.string) (fun v->v));
-test#set_global_val  "a" (OLuaVal.String "bla2");
-let a=(test#get_val "a") in
-print_string (OLuaVal.to_string a);
-
-
-test#parse "
-function test3 () 
-print (\"test3\") 
-end
-print(\"bla\");
-print (Test.test (\"PWD\"));
-print (Test.test2 (\"PWD\"));
-print (a)
-";
-
-test#parse "test3()";
-*)

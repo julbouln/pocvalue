@@ -24,8 +24,7 @@ open XmlParser;;
 
 open Value_xinclude;;
 
-(** Xml parse in an object way *)
-
+(** Xml object representation *)
 
 (** types *)
 
@@ -157,6 +156,8 @@ class xml_node=
 object(self)
   val mutable n=Node (LinkedHashtbl.create 2)
     
+  (** Read *)
+
   (** get tag of this node *)
   method tag=
     tag_of_entity(node_binding n TTag)
@@ -193,7 +194,7 @@ object(self)
   (* FIXME must raise a Xml_node_no_pcdata exception if no pcdata *)
     text_of_entity(node_binding n TText)
 
-  (** modification *)
+  (** Write *)
 
   method set_tag t=
     match n with
@@ -221,7 +222,7 @@ object(self)
 	  LinkedHashtbl.replace nh TText (Text d)
       | _ -> ()
 
-  (** import *)
+  (** Import *)
 
   (** init node object from an entity node *)	  
   method of_node nn=
@@ -245,7 +246,7 @@ object(self)
       n<-node_of_xml_t xt
 
 
-(** export *)
+(** Export *)
 
   (** get the node entity of this node object*)	
   method to_node=

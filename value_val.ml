@@ -158,6 +158,7 @@ object(self)
 
 
 (** OCaml part *)
+
   val mutable vals=DynArray.create()
   method add_val (n:'a) (v:'a)=
     DynArray.add vals (n,v)
@@ -207,7 +208,7 @@ object(self)
     let g (n,v)=f n v in
     DynArray.iter g vals
 
-(* append val 'a from vh to val 'a self : work for string and text*)
+(** append val 'a from vh to val 'a self : work for string and text*)
   method append (v:'a) (vh:('a) val_handler)=
     if self#is_val v && vh#is_val v then (
       let sv=self#get_val v and
@@ -221,7 +222,7 @@ object(self)
       in
 	self#set_val v rv;
     );
-  (* add vh val to self *)
+  (** add vh val to self *)
   method merge (vh:('a) val_handler)=
     vh#foreach_val (
       fun k v->
@@ -229,7 +230,7 @@ object(self)
 	  self#add_val k v
     )
 
-  (* replace self val with vh one *)
+  (** replace self val with vh one *)
   method flatten (vh:('a) val_handler)=
     vh#foreach_val (
       fun k v->
@@ -237,7 +238,7 @@ object(self)
     )
 
 (* FIXME : cause a segfault! *)
-  (* if self val = vh val then delete in self *)
+  (** if self val = vh val then delete in self *)
   method sub (vh:('a) val_handler)=
     vh#foreach_val (
       fun k v->
@@ -294,6 +295,7 @@ object(self)
       DynArray.to_list a
 
 (** XML part *)
+
 (* NOT IMPLEMENTED *)
   method from_xml_string s=
     ()
@@ -326,37 +328,9 @@ object(self)
 	    n#add_child cn
       );
       n
-(*      self#foreach_val (
-	fun k v->
-	  let xr=xmlfrom v in
-	  let xv=
-	    (match xr with
-	       | Element (t,args,childs)->
-		   Element (t,
-			    (match k with
-			      | `String s->List.append [("name",s)] args
-			      | _ -> args),
 
-			    childs)
-	       | x -> x) in
-		(*  DynArray.add a xv *)
-	    (match k with
-	      | `String s->	      
-		  DynArray.add a xv
-	      | `Int i->
-(*		  print_int i;print_newline(); *)
-(*		  print_string (string_of_val v);print_newline(); *)
-(*		  DynArray.set a i xv *)
-		  DynArray.add a xv
-	      | _ -> ())
-	  
-    );
-
-      Element(self#get_id,[],
-	      (DynArray.to_list a)
-	     );
-*)
 (** Lua part *)
+
   method from_lua_string str =
     let lo=new lua_obj in
       ignore(lo#parse str);

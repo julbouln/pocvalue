@@ -17,26 +17,35 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 *)
 
-(** common useful funcs *)
+(** Common classes *)
 
+(** common useful funcs *)
 Random.self_init();;
 
 (** get random number *)
 let randomize n= 
  (Random.int n)
 
-(** Generic core objects *)
+(** Generic common classes *)
 
-(** the most lowlevel object *)
+(** exceptions *)
+
 exception Object_id_not_set;;
 exception Object_type_not_set;;
+exception Object_not_found of string;;
 
+(** the most lowlevel object *)
 class generic_object=
 object
+  (** id as string option *)
   val mutable id=None
+
   (** set the id of this object *)
   method set_id (i:string)=id<-(Some i)
-  (** get the id of this object *)
+
+  (** get the id of this object 
+      raise Object_id_not_set if not set
+  *)
   method get_id=
     match id with
       | Some i->i
@@ -44,13 +53,18 @@ object
 
 end;;
 
+(** the same with type *)
 class generic_object_typed=
 object
   inherit generic_object
   val mutable name=None
-  (** set the id of this object *)
+
+  (** set the type of this object *)
   method set_name (i:string)=name<-(Some i)
-  (** get the id of this object *)
+
+  (** get the type of this object 
+      raise Object_type_not_set if not set
+  *)
   method get_name=
     match id with
       | Some i->i
@@ -58,10 +72,7 @@ object
 
 end;;
 
-
-exception Object_not_found of string;;
-
-
+(** convert a hashtbl in list *)
 let list_of_hash h=
   let l=ref [] in
     Hashtbl.iter (
@@ -76,9 +87,13 @@ class ['a] generic_object_handler=
 object(self)
   val mutable objs=Hashtbl.create 2
 
+  (** delete all objects in handler *)
   method clear()=
     Hashtbl.clear objs;
 
+  (** add object in handler 
+      if id is None then handler generate an automatic id 
+  *)
   method add_object (id:string option) (o:'a)=
     let nid=
       (match id with
@@ -88,29 +103,35 @@ object(self)
       o#set_id nid;
       Hashtbl.add objs nid o;nid
 
+  (** replace object with id by new object *)
   method replace_object id o=
     Hashtbl.replace objs (id) o
 
+  (** is object with id exist in handler ? *)
   method is_object id=
     Hashtbl.mem objs (id)
 
+  (** get object with id *)
   method get_object id=
     (try
        Hashtbl.find objs (id)
      with Not_found -> raise (Object_not_found id))
 
+  (** delete object with id *)
   method delete_object id=
     Hashtbl.remove objs (id)
 
+  (** rename object with id to new id *)
   method rename_object id nid=
     let o=self#get_object id in
       ignore(self#add_object (Some nid) o);
       self#delete_object id;
     
+  (** iter handler foreach object *)
   method foreach_object f=
     Hashtbl.iter f objs
 
-
+  (** iter handler foreach object with sort *)
   method foreach_object_sorted s f=
     let ol=list_of_hash objs in
     let sl=List.sort s ol in
@@ -119,6 +140,7 @@ object(self)
 
 end;;
 
+(** other implementation of handler, same functions *)
 
 (** object handler using array *)
 class ['a] generic_object_handler2=

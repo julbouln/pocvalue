@@ -1,7 +1,8 @@
 open Value_xml;;
-(* FIXME must go in value_xmlparser.ml *)
-(* PARSER *)
 
+(** Xml parsers *)
+
+(** virtual xml parser *)
 class virtual xml_parser=
 object(self)
   method tag=""
@@ -25,11 +26,9 @@ end;;
 
 
 
-(* XML : General parsers *)
+(** General parsers *)
 
-
-
-(* XML : int parser of form <tag a="int"> *)
+(** int parser of form <tag a="int"> *)
 class xml_int_parser a=
 object
   inherit xml_parser
@@ -47,7 +46,7 @@ object
 
 end;;
 
-(* XML : string parser of form <tag a="string"> *)
+(** string parser of form <tag a="string"> *)
 class xml_string_parser a=
 object
   inherit xml_parser
@@ -65,7 +64,7 @@ object
 end;;
 
 
-(* XML : point parser of form <tag x="int" y="int"> *)
+(** point parser of form <tag x="int" y="int"> *)
 class xml_point_parser=
 object
   inherit xml_parser
@@ -85,7 +84,7 @@ object
 
 end;;
 
-(* XML : size parser of form <tag w="int" h="int"> *)
+(** size parser of form <tag w="int" h="int"> *)
 class xml_size_parser=
 object
   inherit xml_parser
@@ -106,7 +105,7 @@ object
 end;;
 
 
-(* XML : size parser of form <tag r="int" g="int" b="int"> *)
+(** color parser of form <tag r="int" g="int" b="int"> *)
 class xml_color_parser=
 object
   inherit xml_parser
@@ -133,7 +132,7 @@ object
 
 end;;
 
-(* XML : list parser  *)
+(** list parser  *)
 class ['a,'b] xml_list_parser ct (pc:unit->'b) =
 object
   inherit xml_parser
@@ -153,18 +152,20 @@ object
 	      
 end;;
 
+(** list of int parser *)
 class xml_intlist_parser ct pc=
 object
   inherit [int,xml_int_parser] xml_list_parser ct pc
 end;;
 
+(** list of string parser *)
 class xml_stringlist_parser ct pc=
 object
   inherit [string,xml_string_parser] xml_list_parser ct pc
 end;;
 
 
-
+(** hashtbl parser *)
 class ['k,'v] xml_hash_parser ct pc =
 object
   inherit xml_parser
@@ -182,6 +183,7 @@ object
       | _ -> ()
 end;;
 
+(** string hashtble parser *)
 class ['v] xml_stringhash_parser ct pc=
 object
   inherit [string,'v] xml_hash_parser ct pc
