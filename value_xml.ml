@@ -234,7 +234,7 @@ object(self)
 
   (** init node object from an Xml.xml *)	
   (* must be private *)
-  method of_xml_t xt=
+  method private of_xml_t xt=
     n<-node_of_xml_t xt
 
   (** init node object from a file 
@@ -242,7 +242,10 @@ object(self)
   *)
   method of_file f=
     let xinc=xinclude_process_file f in
-    let xt=Xml.parse_string xinc in
+    let xp=XmlParser.make() in
+      XmlParser.prove xp false;
+      let xt=XmlParser.parse xp (XmlParser.SString xinc) in
+(*    let xt=Xml.parse_string xinc in *)
       n<-node_of_xml_t xt
 
 
@@ -253,7 +256,7 @@ object(self)
     n
 
   (** convert this node object to a Xml.xml *)
-  method to_xml_t=
+  method private to_xml_t=
     (node_to_xml_t n)
 
   (** convert this node object to string *)      

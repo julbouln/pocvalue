@@ -6,6 +6,18 @@
 #include <caml/custom.h>
 
 
+int validate (xmlDocPtr doc)
+{
+  int r;
+  xmlValidCtxtPtr cvp;
+  cvp = xmlNewValidCtxt();
+  cvp->userData = (void *) stderr;
+  cvp->error    = (xmlValidityErrorFunc) fprintf;
+  cvp->warning  = (xmlValidityWarningFunc) fprintf;
+  r=xmlValidateDocument(cvp, doc);
+  xmlFreeValidCtxt(cvp);
+  return r;
+}
 
 value xml_xinclude_process_file(value filename)
 {
@@ -13,11 +25,15 @@ value xml_xinclude_process_file(value filename)
   int options=0;
   xmlChar *result;
   int len;
+
+
   options |= XML_PARSE_XINCLUDE;
+  //  options |= XML_PARSE_DTDVALID;
 
   doc=xmlReadFile((xmlChar *)String_val(filename),NULL,options);
 
   xmlXIncludeProcessFlags(doc, options);
+  //validate(doc);
 
   xmlDocDumpMemory(doc, &result, &len);
   
