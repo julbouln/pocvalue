@@ -22,14 +22,38 @@ type val_generic=
     ]
 ;;
 
-let xml_of_val=function
-  | `Int i->Xml.Element("val_int",[("value",string_of_int i)],[])
-  | `String s->Xml.Element("val_string",[("value",s)],[])
-  | `Float f->Xml.Element("val_float",[("value",string_of_float f)],[])
-  | `Bool b->Xml.Element("val_bool",[("value",if b then "true" else "false")],[])
-  | `Text s->Xml.Element("val_text",[],[Xml.PCData s])
-  | `Nil -> Xml.Element("val_nil",[],[]);;
 
+let xml_of_val_NEW v=
+  let on=new xml_node_NEW in
+    (match v with 
+      | `Int i->
+	  on#of_list [Tag "val_int";Attribute ("value",string_of_int i)]
+      | `String s->
+	  on#of_list [Tag "val_string";Attribute ("value",s)]
+      | `Float f->
+	  on#of_list [Tag "val_float";Attribute ("value",string_of_float f)]
+      | `Bool b->
+	  on#of_list [Tag "val_bool";Attribute ("value",if b then "true" else "false")]
+      | `Text s->
+	  on#of_list [Tag "val_text";Text s]
+      | `Nil -> 
+	  on#of_list [Tag "val_nil"]
+    );
+    on
+
+let xml_of_val=function
+  | `Int i->
+      Xml.Element("val_int",[("value",string_of_int i)],[]) 
+  | `String s->
+      Xml.Element("val_string",[("value",s)],[])
+  | `Float f->
+      Xml.Element("val_float",[("value",string_of_float f)],[])
+  | `Bool b->
+      Xml.Element("val_bool",[("value",if b then "true" else "false")],[])
+  | `Text s->
+      Xml.Element("val_text",[],[Xml.PCData s])
+  | `Nil -> 
+      Xml.Element("val_nil",[],[]);;
 
 
 let val_of_xml=function
@@ -44,6 +68,31 @@ let val_of_xml=function
   | Element("val_text",_,_) as x-> `Text (Xml.pcdata (List.nth (Xml.children x) 0))
   | Element("val_nil",_,_) as x-> `Nil
   | _->`Nil
+
+
+let val_of_xml_NEW x=
+  match (x#tag) with
+    | "val_int" -> `Int (int_of_string (x#attrib "value"))
+    | "val_string" -> `String (x#attrib "value")
+    | "val_float" -> `Float (float_of_string (x#attrib "value"))
+    | "val_bool" -> `Bool (match (x#attrib "value") with | "true"->true | _ -> false)
+    | "val_text" -> `Text (x#pcdata)
+    | _ -> `Nil
+
+let val_of_xml=function
+  | Element("val_int",_,_) as x-> `Int (int_of_string (Xml.attrib x "value"))
+  | Element("val_string",_,_) as x-> `String (Xml.attrib x "value")
+  | Element("val_float",_,_) as x-> `Float (float_of_string (Xml.attrib x "value"))
+  | Element("val_bool",_,_) as x-> `Bool (match (Xml.attrib x "value") with
+					    | "true" -> true
+					    | "false" -> false
+					    | _ -> false
+					 )
+  | Element("val_text",_,_) as x-> `Text (Xml.pcdata (List.nth (Xml.children x) 0))
+  | Element("val_nil",_,_) as x-> `Nil
+  | _->`Nil
+
+
 
 let lua_of_val=function
   | `Int i->OLuaVal.Number (float_of_int i) 
@@ -93,7 +142,7 @@ let text_of_val=function
   | `Text v->v
   | `Int v->string_of_int v
   | `Float v->string_of_float v
-  | _->raise (Bad_val_type "string");;
+  | _->raise (Bad_val_type "text");;
 
 (** Ocaml & Lua & XML interface *)
 
@@ -106,13 +155,13 @@ type val_format_t=
 
 type ('a) val_format=
   | ValList of 'a list
-  | ValXml of Xml.xml
+  | ValXml of xml_node_NEW
   | ValXmlString of string
   | ValLua of lua_obj
   | ValLuaString of string;;
 
 
-class ['a] val_handler (xmlfrom:'a->Xml.xml) (xmlto:Xml.xml->'a) (luafrom:'a->OLuaVal.value) (luato:OLuaVal.value->'a)=
+class ['a] val_handler (xmlfrom:'a->xml_node_NEW) (xmlto:xml_node_NEW->'a) (luafrom:'a->OLuaVal.value) (luato:OLuaVal.value->'a)=
 object(self)
   inherit generic_object
 
@@ -158,8 +207,9 @@ object(self)
 	) vals;
       if !ni<>(-1) then
 	(snd (DynArray.get vals !ni))
-      else
+      else (
 	raise (Val_not_found (string_of_val n))
+      )
 
   method del_val (n:'a)=
     let ni=ref (-1) in
@@ -271,11 +321,32 @@ object(self)
       DynArray.to_list a
 
 (** XML part *)
+(* NOT IMPLEMENTED *)
   method from_xml_string s=
+    ()
+(*
     let x=Xml.parse_string s in
       self#from_xml x
+*)
 
   method from_xml x=
+    self#set_id x#tag;
+    let childs=x#children in
+    let i=ref 0 in
+    List.iter (
+      fun ec->
+	let c=new xml_node_NEW in
+	  c#of_node ec;
+	let v=xmlto c in
+	let nm=
+	  (try
+	     (`String (c#attrib "name")) 
+	   with Xml_node_no_attrib v->
+	     i:= !i+1;`Int (!i-1)) in
+	  self#set_val (nm) v;
+
+    ) childs;
+(*
     self#set_id (Xml.tag x);
     let childs=Xml.children x in
     let i=ref 0 in
@@ -291,14 +362,21 @@ object(self)
 
 
     ) childs;
-
+*)
   method to_xml_string=
     let x=self#to_xml in
-      Xml.to_string x
+      x#to_string
+(*      Xml.to_string x*)
  
   method to_xml=
-    let a=DynArray.create() in
+    let n=new xml_node_NEW in
       self#foreach_val (
+	fun k v ->
+	  let cn=xmlfrom v in
+	    n#add_child cn#to_node
+      );
+      n
+(*      self#foreach_val (
 	fun k v->
 	  let xr=xmlfrom v in
 	  let xv=
@@ -327,7 +405,7 @@ object(self)
       Element(self#get_id,[],
 	      (DynArray.to_list a)
 	     );
-
+*)
 (** Lua part *)
   method from_lua_string str =
     let lo=new lua_obj in
@@ -381,7 +459,7 @@ end;;
 
 class val_generic_handler=
 object
-  inherit [val_generic] val_handler xml_of_val val_of_xml lua_of_val val_of_lua 
+  inherit [val_generic] val_handler xml_of_val_NEW val_of_xml_NEW lua_of_val val_of_lua 
 end;;
 
 
