@@ -1,5 +1,3 @@
-open Xml;;
-
 open Value_common;;
 open Value_xml;;
 open Value_lua;;
@@ -23,8 +21,8 @@ type val_generic=
 ;;
 
 
-let xml_of_val_NEW v=
-  let on=new xml_node_NEW in
+let xml_of_val v=
+  let on=new xml_node in
     (match v with 
       | `Int i->
 	  on#of_list [Tag "val_int";Attribute ("value",string_of_int i)]
@@ -41,36 +39,7 @@ let xml_of_val_NEW v=
     );
     on
 
-let xml_of_val=function
-  | `Int i->
-      Xml.Element("val_int",[("value",string_of_int i)],[]) 
-  | `String s->
-      Xml.Element("val_string",[("value",s)],[])
-  | `Float f->
-      Xml.Element("val_float",[("value",string_of_float f)],[])
-  | `Bool b->
-      Xml.Element("val_bool",[("value",if b then "true" else "false")],[])
-  | `Text s->
-      Xml.Element("val_text",[],[Xml.PCData s])
-  | `Nil -> 
-      Xml.Element("val_nil",[],[]);;
-
-
-let val_of_xml=function
-  | Element("val_int",_,_) as x-> `Int (int_of_string (Xml.attrib x "value"))
-  | Element("val_string",_,_) as x-> `String (Xml.attrib x "value")
-  | Element("val_float",_,_) as x-> `Float (float_of_string (Xml.attrib x "value"))
-  | Element("val_bool",_,_) as x-> `Bool (match (Xml.attrib x "value") with
-					    | "true" -> true
-					    | "false" -> false
-					    | _ -> false
-					 )
-  | Element("val_text",_,_) as x-> `Text (Xml.pcdata (List.nth (Xml.children x) 0))
-  | Element("val_nil",_,_) as x-> `Nil
-  | _->`Nil
-
-
-let val_of_xml_NEW x=
+let val_of_xml x=
   match (x#tag) with
     | "val_int" -> `Int (int_of_string (x#attrib "value"))
     | "val_string" -> `String (x#attrib "value")
@@ -78,20 +47,6 @@ let val_of_xml_NEW x=
     | "val_bool" -> `Bool (match (x#attrib "value") with | "true"->true | _ -> false)
     | "val_text" -> `Text (x#pcdata)
     | _ -> `Nil
-
-let val_of_xml=function
-  | Element("val_int",_,_) as x-> `Int (int_of_string (Xml.attrib x "value"))
-  | Element("val_string",_,_) as x-> `String (Xml.attrib x "value")
-  | Element("val_float",_,_) as x-> `Float (float_of_string (Xml.attrib x "value"))
-  | Element("val_bool",_,_) as x-> `Bool (match (Xml.attrib x "value") with
-					    | "true" -> true
-					    | "false" -> false
-					    | _ -> false
-					 )
-  | Element("val_text",_,_) as x-> `Text (Xml.pcdata (List.nth (Xml.children x) 0))
-  | Element("val_nil",_,_) as x-> `Nil
-  | _->`Nil
-
 
 
 let lua_of_val=function
@@ -155,13 +110,13 @@ type val_format_t=
 
 type ('a) val_format=
   | ValList of 'a list
-  | ValXml of xml_node_NEW
+  | ValXml of xml_node
   | ValXmlString of string
   | ValLua of lua_obj
   | ValLuaString of string;;
 
 
-class ['a] val_handler (xmlfrom:'a->xml_node_NEW) (xmlto:xml_node_NEW->'a) (luafrom:'a->OLuaVal.value) (luato:OLuaVal.value->'a)=
+class ['a] val_handler (xmlfrom:'a->xml_node) (xmlto:xml_node->'a) (luafrom:'a->OLuaVal.value) (luato:OLuaVal.value->'a)=
 object(self)
   inherit generic_object
 
@@ -334,9 +289,7 @@ object(self)
     let childs=x#children in
     let i=ref 0 in
     List.iter (
-      fun ec->
-	let c=new xml_node_NEW in
-	  c#of_node ec;
+      fun c->
 	let v=xmlto c in
 	let nm=
 	  (try
@@ -369,7 +322,7 @@ object(self)
 (*      Xml.to_string x*)
  
   method to_xml=
-    let n=new xml_node_NEW in
+    let n=new xml_node in
       self#foreach_val (
 	fun k v ->
 	  let cn=xmlfrom v in
@@ -459,7 +412,7 @@ end;;
 
 class val_generic_handler=
 object
-  inherit [val_generic] val_handler xml_of_val_NEW val_of_xml_NEW lua_of_val val_of_lua 
+  inherit [val_generic] val_handler xml_of_val val_of_xml lua_of_val val_of_lua 
 end;;
 
 

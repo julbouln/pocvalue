@@ -41,63 +41,205 @@ let xml_reduce n (f:Xml.xml->bool)=
       | Element (t,attrs,childs)->Element (t,attrs,DynArray.to_list childd)
       | _ -> raise Bad_xml_node ;;
     
+(* NEW *)
 
-exception Xml_node_attr_not_found of string;;
-exception Xml_node_child_not_found of string;;
+exception Xml_entity_not_node
 
-class xml_node (n:Xml.xml)=
+type xml_entity_t=
+  | TTag
+  | TAttribute
+  | TText
+  | TNode
+
+exception Bad_entity;;
+exception Xml_node_binding_not_found of xml_entity_t
+exception Xml_node_no_attrib of string
+
+type xml_entity=
+  | Tag of string
+  | Attribute of (string*string)
+  | Text of string
+  | Node of (xml_entity_t,xml_entity) LinkedHashtbl.t;;
+
+let rec xml_entity_dump=function
+  | Tag s->print_string("Tag: "^s);print_newline();
+  | Attribute (n,s)->print_string("Attribute: "^n^"="^s);print_newline();
+  | Text s->print_string("Text: "^s);print_newline();
+  | _ -> ()
+
+
+let tag_of_entity=function
+  | Tag t->t
+  | _ -> raise Bad_entity
+
+let attribute_of_entity=function
+  | Attribute a->a
+  | _ -> raise Bad_entity
+
+let text_of_entity=function
+  | Text t->t
+  | _ -> raise Bad_entity
+
+(*
+let node_of_entity=function
+  | Node n->n
+  | _ -> raise Bad_entity
+*)
+(** operations on node *)
+
+let node_of_entity=function
+  | Node n->n
+  | _ -> raise Xml_entity_not_node
+
+let node_binding n bt=
+  let ne=node_of_entity n in
+    (try
+       LinkedHashtbl.find ne bt
+     with Not_found->raise (Xml_node_binding_not_found bt))
+
+let node_bindings n bt=
+  let ne=node_of_entity n in
+    (try 
+       List.rev (LinkedHashtbl.find_all ne bt)
+     with Not_found->[])
+       
+
+class xml_node=
 object(self)
-  val mutable node=n
-  val mutable tag="none"
-  val mutable pcdata=""
-  val mutable attrs=Hashtbl.create 2
-  val mutable children=Hashtbl.create 2
+  val mutable n=Node (LinkedHashtbl.create 2)
 
-  method set_tag t=tag<-t
-  method get_tag=tag
+  method tag=
+    tag_of_entity(node_binding n TTag)
 
-  method set_pcdata t=pcdata<-t
-  method get_pcdata=pcdata
+  method attribs=
+    List.map (fun a->attribute_of_entity a) (node_bindings n TAttribute)
 
-  method add_attr k v=
-    Hashtbl.add attrs (String.lowercase k) v;
-  method get_attr k=
-    (try 
-       Hashtbl.find attrs k
-     with Not_found -> raise (Xml_node_attr_not_found k))
-  method foreach_attr f=Hashtbl.iter f attrs
-
-  method add_child k v=Hashtbl.add children k v
-  method get_child k=
-    (try 
-       Hashtbl.find children k
-     with Not_found -> raise (Xml_node_child_not_found k))
-  method foreach_child f=Hashtbl.iter f children
-
-  initializer
-    (* set tag *)
-    self#set_tag (Xml.tag node);
-
-    (* add attributes *)
-    List.iter (
-      fun (k,v)->(
-	self#add_attr k v)
-    ) (Xml.attribs node);
-    
-    (* add children *)
-    List.iter (
-      fun x->(
-	match x with
-	  | Element v -> self#add_child (Xml.tag x) (new xml_node x)
-	  | PCData v -> self#set_pcdata v
+  method attrib an=
+    let av=ref None in
+      List.iter (
+	fun a->
+	  let (fan,fav)=attribute_of_entity a in
+	    if fan=an then av:=Some fav	
       )
-    ) (Xml.children node)
-      
+	(node_bindings n TAttribute);
+      match !av with
+	| Some v->v
+	| None -> raise (Xml_node_no_attrib an)
+    
+  method children=
+    List.map (
+      fun c->
+	let cn=new xml_node in
+	  cn#of_node c;
+	  cn
+    )
+      (node_bindings n TNode)
 
-  method set_node n=node<-n
-  method get_node=node
+  method pcdata=
+    text_of_entity(node_binding n TText)
+
+  method node_of_list l=
+    let nh=LinkedHashtbl.create 2 in
+      List.iter (
+	fun e ->
+(*	  xml_entity_dump e; *)
+	  match e with
+	    | Tag x -> LinkedHashtbl.add nh TTag e
+	    | Attribute x -> LinkedHashtbl.add nh TAttribute e
+	    | Text x -> LinkedHashtbl.add nh TText e
+	    | Node x -> LinkedHashtbl.add nh TNode e
+      ) l;
+      nh
+
+  method add_attrib a=
+    match n with
+      | Node nh->
+	  LinkedHashtbl.add nh TAttribute (Attribute a)
+      | _ -> ()
+
+  method add_child c=
+    match n with
+      | Node nh->
+	  LinkedHashtbl.add nh TNode (c)
+      | _ -> ()
+
+(** import *)
+
+  method of_node nn=
+    n<-nn
+
+  method of_list l=
+    n<-Node (self#node_of_list l)
+	
+  method node_of_xml_t xt=
+    let rec of_xml_t_f=function
+      | Element (tag,attrs,children)->
+	  Node 
+	    (self#node_of_list
+	       ([Tag tag]
+		@
+		(List.map (
+		   fun att->
+		     Attribute att
+		 ) attrs)
+		@
+		(List.map (
+		   fun child ->
+		     of_xml_t_f child
+		 ) children)
+	       )
+	    )
+      | PCData data->Text data in
+      of_xml_t_f xt
+
+  method of_xml_t xt=
+    n<-self#node_of_xml_t xt
+
+  method of_file f=
+    let xinc=xinclude_process_file f in
+    let xt=Xml.parse_string xinc in
+      n<-self#node_of_xml_t xt
+
+
+(** export *)
+  method to_node=
+    n
+
+  method node_to_xml_t nn=
+    let rec to_xml_t_f=function
+      | Text t->[PCData t]
+      | Node n ->
+	  let on=new xml_node in
+	    on#of_node (Node n);
+	  [Element (on#tag,
+		    on#attribs ,
+		    let tl=ref [] in
+		      List.iter (
+			fun e->
+			  tl:= !tl@to_xml_t_f (e#to_node)
+		      ) (on#children);
+		      !tl
+		   )
+	  ]
+      | _ -> []	in
+      List.nth (to_xml_t_f nn) 0
+
+  method to_xml_t=
+    (self#node_to_xml_t n)
+
+  method to_string=
+    Xml.to_string (self#node_to_xml_t n)
 
 end;;
+
+let xml_node_from_file f=
+  let n=new xml_node in
+    n#of_file f;
+    n
+
+
+  
+(* PARSER *)
 
 
 
@@ -108,8 +250,16 @@ object(self)
   method virtual parse_child: string->xml_node->unit
 
   method parse (n:xml_node)= 
-    n#foreach_attr self#parse_attr;
-    n#foreach_child self#parse_child;
+    List.iter (
+      fun (an,av)->
+      self#parse_attr an av
+    ) n#attribs;
+
+    List.iter (
+      fun (cn)->
+      self#parse_child cn#tag cn
+    ) n#children;
+
 end;;
 
 
@@ -275,260 +425,6 @@ class ['v] xml_stringhash_parser ct pc=
 object
   inherit [string,'v] xml_hash_parser ct pc
 end;;
-
-class virtual xml_object=
-object(self)
-
-(* general *)
-  method get_tag x=Xml.tag x
-  method get_attrib x n=Xml.attrib x n
-  method get_attribs x=Xml.attribs x
-  method get_children x=Xml.children x
-  method get_pcdate x=Xml.pcdata x
-
-  method foreach_attrib x f=
-    List.iter f (self#get_attribs x);
-
-  method foreach_child x f=
-    List.iter f (self#get_children x);
-
-
-  method merge x1 x2=
-    let rec m xe1 xe2=
-      match (xe1,xe2) with
-	| (Element(t1,a1,c1),Element(t2,a2,c2)) when t1=t2 && a1=a2->
-	    let ncl=ref c1 in
-	      List.iter (
-		fun c->
-		  List.iter (
-		    fun cc ->
-		      ncl:= !ncl@(m cc c);
-		  ) c1;		  
-	      ) c2;
-	      
-	      [(Element(t1,a1,!ncl))]
-		
-	| (o1,o2) -> [] in
-      m x1 x2
-
-(* to xml *)
-  method virtual to_xml : Xml.xml
-  method to_xml_string=
-    let x=self#to_xml in
-      Xml.to_string x
-  method save_to_file f=
-    let fo=open_out f in
-      output_string fo (self#to_xml_string);
-      close_out fo;
-
-(* from xml *)
-  method virtual from_xml : Xml.xml -> unit
-  method from_xml_string s=
-    let x=Xml.parse_string s in
-      self#from_xml x
-  method load_from_file f=
-    let x=Xml.parse_file f in
-      self#from_xml x
-
-
-end;;
-
-
-(* NEW *)
-
-exception Xml_entity_not_node
-
-type xml_entity_t=
-  | TTag
-  | TAttribute
-  | TText
-  | TNode
-
-exception Bad_entity;;
-exception Xml_node_binding_not_found of xml_entity_t
-exception Xml_node_no_attrib of string
-
-type xml_entity=
-  | Tag of string
-  | Attribute of (string*string)
-  | Text of string
-  | Node of (xml_entity_t,xml_entity) LinkedHashtbl.t;;
-
-let rec xml_entity_dump=function
-  | Tag s->print_string("Tag: "^s);print_newline();
-  | Attribute (n,s)->print_string("Attribute: "^n^"="^s);print_newline();
-  | Text s->print_string("Text: "^s);print_newline();
-  | _ -> ()
-
-
-let tag_of_entity=function
-  | Tag t->t
-  | _ -> raise Bad_entity
-
-let attribute_of_entity=function
-  | Attribute a->a
-  | _ -> raise Bad_entity
-
-let text_of_entity=function
-  | Text t->t
-  | _ -> raise Bad_entity
-
-(*
-let node_of_entity=function
-  | Node n->n
-  | _ -> raise Bad_entity
-*)
-(** operations on node *)
-
-let node_of_entity=function
-  | Node n->n
-  | _ -> raise Xml_entity_not_node
-
-let node_binding n bt=
-  let ne=node_of_entity n in
-    (try
-       LinkedHashtbl.find ne bt
-     with Not_found->raise (Xml_node_binding_not_found bt))
-
-let node_bindings n bt=
-  let ne=node_of_entity n in
-    (try 
-       List.rev (LinkedHashtbl.find_all ne bt)
-     with Not_found->[])
-       
-
-class xml_node_NEW=
-object(self)
-  val mutable n=Node (LinkedHashtbl.create 2)
-
-  method tag=
-    tag_of_entity(node_binding n TTag)
-
-  method attribs=
-    List.map (fun a->attribute_of_entity a) (node_bindings n TAttribute)
-
-  method attrib an=
-    let av=ref None in
-      List.iter (
-	fun a->
-	  let (fan,fav)=attribute_of_entity a in
-	    if fan=an then av:=Some fav	
-      )
-	(node_bindings n TAttribute);
-      match !av with
-	| Some v->v
-	| None -> raise (Xml_node_no_attrib an)
-    
-  method children=
-    (node_bindings n TNode)
-
-  method pcdata=
-    text_of_entity(node_binding n TText)
-
-  method node_of_list l=
-    let nh=LinkedHashtbl.create 2 in
-      List.iter (
-	fun e ->
-(*	  xml_entity_dump e; *)
-	  match e with
-	    | Tag x -> LinkedHashtbl.add nh TTag e
-	    | Attribute x -> LinkedHashtbl.add nh TAttribute e
-	    | Text x -> LinkedHashtbl.add nh TText e
-	    | Node x -> LinkedHashtbl.add nh TNode e
-      ) l;
-      nh
-
-  method add_attrib a=
-    match n with
-      | Node nh->
-	  LinkedHashtbl.add nh TAttribute (Attribute a)
-      | _ -> ()
-
-  method add_child c=
-    match n with
-      | Node nh->
-	  LinkedHashtbl.add nh TNode (c)
-      | _ -> ()
-
-(** import *)
-
-  method of_node nn=
-    n<-nn
-
-  method of_list l=
-    n<-Node (self#node_of_list l)
-	
-  method node_of_xml_t xt=
-    let rec of_xml_t_f=function
-      | Element (tag,attrs,children)->
-	  Node 
-	    (self#node_of_list
-	       ([Tag tag]
-		@
-		(List.map (
-		   fun att->
-		     Attribute att
-		 ) attrs)
-		@
-		(List.map (
-		   fun child ->
-		     of_xml_t_f child
-		 ) children)
-	       )
-	    )
-      | PCData data->Text data in
-      of_xml_t_f xt
-
-  method of_xml_t xt=
-    n<-self#node_of_xml_t xt
-
-  method of_file f=
-    let xinc=xinclude_process_file f in
-    let xt=Xml.parse_string xinc in
-      n<-self#node_of_xml_t xt
-
-
-(** export *)
-  method to_node=
-    n
-
-  method node_to_xml_t nn=
-    let rec to_xml_t_f=function
-      | Text t->[PCData t]
-      | Node n ->
-	  let on=new xml_node_NEW in
-	    on#of_node (Node n);
-	  [Element (on#tag,
-		    on#attribs ,
-		    let tl=ref [] in
-		      List.iter (
-			fun e->
-			  tl:= !tl@to_xml_t_f e
-		      ) (on#children);
-		      !tl
-		   )
-	  ]
-      | _ -> []	in
-      List.nth (to_xml_t_f nn) 0
-
-  method to_xml_t=
-    (self#node_to_xml_t n)
-
-  method to_string=
-    Xml.to_string (self#node_to_xml_t n)
-
-end;;
-
-
-  
-(* OCaml POWA! *)
-(** conversion funcs *)
-
-
-
-
-
-
 
 
 
