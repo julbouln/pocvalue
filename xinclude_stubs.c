@@ -5,7 +5,7 @@
 #include <caml/fail.h>
 #include <caml/custom.h>
 
-
+/*
 int validate (xmlDocPtr doc)
 {
   int r;
@@ -18,7 +18,7 @@ int validate (xmlDocPtr doc)
   xmlFreeValidCtxt(cvp);
   return r;
 }
-
+*/
 value xml_xinclude_process_file(value filename)
 {
   xmlDocPtr doc;
