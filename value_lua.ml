@@ -124,6 +124,17 @@ object(self)
       str:= ["root"]@(List.rev !str)@[string_of_luaval (List.nth id 0)];
       String.concat "." !str;
 
+  method get_fun k=
+    let v=self#get_val k in
+      (match v with
+      | OLuaVal.Function (v,f)-> 
+	  (try 
+	     f
+	   with
+	     |I.Error e->(raise (Lua_error (self#get_self_id,string_of_luaval k,e)))
+	  )
+      | _ -> fun l->[OLuaVal.Nil]
+      )
   method exec_val_fun k args=
 (*    (try *)
        let v=self#get_val k in
@@ -175,7 +186,7 @@ object(self)
 (*    print_string ("LUA: init "^self#get_id);print_newline(); *)
     lua#set_val (OLuaVal.String "get_id") (OLuaVal.efunc (OLuaVal.unit **->> OLuaVal.string) (fun()->self#get_id));
     lua#set_val (OLuaVal.String "get_global_id") (OLuaVal.efunc (OLuaVal.unit **->> OLuaVal.string) (fun()->lua#get_self_id));
-    lua#parse lua_script
+    ignore(lua#parse lua_script)
 
   method lua_parent_of nm (obj:lua_object)=
     obj#get_lua#set_obj_val "parent" lua;

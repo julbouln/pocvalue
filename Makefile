@@ -1,7 +1,7 @@
 OCAMLMAKEFILE = OCamlMakefile
 
 PACKS=str unix extlib lua-ml xml-light
-LIBINSTALL_FILES=*.cmi *.cmo *.cmx *.a *.so pocvalue.cma pocvalue.cmxa
+LIBINSTALL_FILES=*.cmi *.cmo *.cmx *.a pocvalue.cma pocvalue.cmxa
 
 SOURCES_C=xinclude_stubs.c 
 SOURCES_ML= value_xinclude.ml value_common.ml value_lua.ml value_xml.ml value_val.ml value_xmlparser.ml
