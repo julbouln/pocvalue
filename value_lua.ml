@@ -74,6 +74,17 @@ method parse e= I.dostring interp e
 
 end;;
 
+exception Lua_not_found of string;;
+exception Lua_bad_type of string;;
+exception Lua_error of string*string*string;;
+
+
+let string_of_luaval=function
+  | OLuaVal.String s->s
+  | OLuaVal.Number s->string_of_float s
+  | OLuaVal.Nil -> "nil"
+  | _ -> raise (Lua_bad_type "string");;
+
 
 class lua_obj=
 object(self)
@@ -90,17 +101,58 @@ object(self)
       
   method get_val k=
     self#update_vals();
-    Luahash.find vals (k)
+    (try
+       Luahash.find vals (k)
+     with
+	 Not_found -> raise (Lua_not_found (string_of_luaval k)))
+	 
+  method get_self_id=
+    let str=ref [] in
+    let rec parent_id p=
+      (try 
+	 match p with
+	   | OLuaVal.Table tbl->
+	       let fid=Luahash.find tbl (OLuaVal.String "get_id") in
+		 (match fid with
+		    | OLuaVal.Function (v,f)-> 
+			str:= !str@
+			  [string_of_luaval(List.nth (f [OLuaVal.Nil]) 0)];
+			parent_id (Luahash.find tbl (OLuaVal.String "parent"))
+		    | _ -> ()
+		 )
+	   | _ ->()
+       with _ ->()) in
+      
+      parent_id (self#get_val(OLuaVal.String "parent"));
+      let id=self#exec_val_fun (OLuaVal.String "get_id") [OLuaVal.Nil] in 
+	
+      str:= ["root"]@(List.rev !str)@[string_of_luaval (List.nth id 0)];
+      String.concat "." !str;
 
   method exec_val_fun k args=
-    let v=self#get_val k in
-     (match v with
-	| OLuaVal.Function (v,f)-> f args
-	| _ -> [OLuaVal.Nil]
-     )
-  method parse e=
-    interp#parse e;
+(*    (try *)
+       let v=self#get_val k in
+	 (match v with
+	    | OLuaVal.Function (v,f)-> 
+		(try 
+		   f args
+		 with
+		   |I.Error e->(raise (Lua_error (self#get_self_id,string_of_luaval k,e)))
+		)
+	    | _ -> [OLuaVal.Nil]
+	 )
+(*     with
+	 Lua_not_found v->[OLuaVal.Nil])*)
 
+  method parse e=
+    (try
+      interp#parse e;
+     with
+       |I.Error e->
+
+	   (raise (Lua_error (self#get_self_id,"",e)))
+	   
+    )
   method update_interp()=
     interp#set_global_val "self" (OLuaVal.Table self#to_table);
     
@@ -119,21 +171,25 @@ object(self)
 
 end;;
 
-class lua_object=
-object
+class virtual lua_object=
+object(self)
   val mutable lua=new lua_obj
   method get_lua=lua
+
+  method virtual get_id:string
 
   val mutable lua_script=""
   method set_lua_script l=lua_script<-l
   method get_lua_script=lua_script
 
   method lua_init()=
+    lua#set_val (OLuaVal.String "get_id") (OLuaVal.efunc (OLuaVal.unit **->> OLuaVal.string) (fun()->self#get_id));
     lua#parse lua_script
 
   method lua_parent_of nm (obj:lua_object)=
     obj#get_lua#set_obj_val "parent" lua;
     lua#set_obj_val nm obj#get_lua;
+    
 
 end;;
 
