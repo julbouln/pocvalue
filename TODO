@@ -1,10 +1,6 @@
 
 * fixes/improvement
-- use xml_node in val instead of Xml.t
 
 * new objects
-- add xml_node_of_file : string->xml_node 
-  and xml_node_of_file_with_xinclude : string->xml_node funcs
 - add an xml parser vault to simplify creation of new parser
-- add xml_parse_file and xml_parse_file_with_xinclude funcs
 - add Dbi interface in val

@@ -1,6 +1,6 @@
 (*
-    Battle For Rashitoul - The ultimate strategy/arcade game
-    Copyright (C) 2003,2004,2005 POC 
+    pocvalue - data manager
+    Copyright (C) 2005 POC 
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

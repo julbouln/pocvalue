@@ -1,4 +1,4 @@
-description = "Pocengine value"
+description = "Pocengine data manager"
 requires = "str,unix,extlib,lua-ml,xml-light"
 version = "0.1"
 archive(byte) = "pocvalue.cma"
