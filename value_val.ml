@@ -338,7 +338,6 @@ object(self)
       
 
   method from_lua (t:lua_obj)=
-    t#update_vals();
     Luahash.iter (
       fun k v->
 	let ak=luato k and

@@ -40,8 +40,6 @@ let ( **->> ) x y = x **-> OLuaVal.result y
 (** interpret string *)
 class lua_interp=
 object(self)
-(** a list of vals in ocaml *)
-val mutable vals=DynArray.create();
 
 (** the interpreter *)
 val mutable interp=I.mk()
@@ -50,31 +48,18 @@ initializer
   self#set_global_val "randomize" (OLuaVal.efunc (OLuaVal.int **->> OLuaVal.int) randomize)
 
 method set_global_val n f=
-self#add_val n f;
-self#register_vals_global()
+ I.register_globals
+   [(n,f)]
+   interp;
 
 method set_module_val m n f=
-self#add_val n f;
-self#register_vals_module m
+ I.register_module m
+   [(n,f)]
+   interp;
 
 method get_val f=
 I.getglobal interp (OLuaVal.String f)
 
-method add_val n f=
-DynArray.add vals (n,f)
-
-method register_vals_global()=
- I.register_globals
- (DynArray.to_list vals)
- interp;
- DynArray.clear vals;
- 
-method register_vals_module m=
- I.register_module m
- (DynArray.to_list vals)
- interp;
- DynArray.clear vals;
-		
 method parse e= I.dostring interp e
 
 end;;
@@ -101,16 +86,16 @@ object(self)
   val mutable interp=new lua_interp
   val mutable vals=Luahash.create (fun a b->a=b) 2
     
+  initializer
+    interp#set_global_val "self" (OLuaVal.Table vals); 
+
   method del_val k=
     Luahash.remove vals (k);
-    self#update_interp();
 
   method set_val k (v:OLuaVal.value)=
     Luahash.replace vals ~key:(k) ~data:v;
-    self#update_interp();
       
   method get_val k=
-    self#update_vals();
     (try
        Luahash.find vals (k)
      with
@@ -163,17 +148,9 @@ object(self)
 	   (raise (Lua_error (self#get_self_id,"",e)))
 	   
     )
-  method update_interp()=
-    interp#set_global_val "self" (OLuaVal.Table self#to_table);
-    
-  method update_vals()=
-    let tv=interp#get_val "self" in
-      match tv with
-	| OLuaVal.Table tbl->vals<-tbl
-	| _ ->()
 
   method to_table=vals
-  method from_table v=vals<-v;self#update_interp()
+  method from_table v=vals<-v
 
   method set_obj_val (nm:string) (o:lua_obj)=
     self#set_val (OLuaVal.String nm) (OLuaVal.Table o#to_table)
@@ -197,6 +174,7 @@ object(self)
 
 (*    print_string ("LUA: init "^self#get_id);print_newline(); *)
     lua#set_val (OLuaVal.String "get_id") (OLuaVal.efunc (OLuaVal.unit **->> OLuaVal.string) (fun()->self#get_id));
+    lua#set_val (OLuaVal.String "get_global_id") (OLuaVal.efunc (OLuaVal.unit **->> OLuaVal.string) (fun()->lua#get_self_id));
     lua#parse lua_script
 
   method lua_parent_of nm (obj:lua_object)=

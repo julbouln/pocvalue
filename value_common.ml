@@ -147,6 +147,9 @@ class ['a] generic_object_handler2=
 object(self)
   val mutable objs=DynArray.create()
 
+  method clear()=
+    DynArray.clear objs
+
   method private obj_n id=
     let ni=ref (-1) in
       DynArray.iteri (
