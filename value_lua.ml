@@ -183,6 +183,8 @@ object(self)
   method get_lua_script=lua_script
 
   method lua_init()=
+
+(*    print_string ("LUA: init "^self#get_id);print_newline(); *)
     lua#set_val (OLuaVal.String "get_id") (OLuaVal.efunc (OLuaVal.unit **->> OLuaVal.string) (fun()->self#get_id));
     lua#parse lua_script
 

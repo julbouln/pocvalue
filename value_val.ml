@@ -216,7 +216,6 @@ object(self)
 	match (sv,vv) with
 	  | (`String v1,`String v2) -> `String (v2^v1)
 	  | (`Text v1,`String v2) -> `Text (v2^v1)
-	  | (`String v1,`String v2) -> `Text (v2^v1)
 	  | (`Text v1,`Text v2) -> `Text (v2^v1)
 	  | _ ->`Nil
       in
