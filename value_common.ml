@@ -11,6 +11,7 @@ let randomize n=
 
 (** the most lowlevel object *)
 exception Object_id_not_set;;
+exception Object_type_not_set;;
 
 class generic_object=
 object
@@ -23,13 +24,20 @@ object
       | Some i->i
       | None -> raise Object_id_not_set
 
-(*
-  method print_info()=
-    print_string ("POCCORE: object info");print_newline();
+end;;
+
+class generic_object_typed=
+object
+  inherit generic_object
+  val mutable name=None
+  (** set the id of this object *)
+  method set_name (i:string)=name<-(Some i)
+  (** get the id of this object *)
+  method get_name=
     match id with
-      | Some i->print_string (" * id: "^i);print_newline();
-      | None ->print_string (" * id: not set!");print_newline();
-*)
+      | Some i->i
+      | None -> raise Object_type_not_set
+
 end;;
 
 

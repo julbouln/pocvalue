@@ -274,41 +274,6 @@ object
   inherit [string,'v] xml_hash_parser ct pc
 end;;
 
-(* NEW *)
-(*
-
-arbre_type.xml (pousse)
-<game_object name="arbre">
-<header>
-  <inherit file="decor_type.xml"/>
-</header>
-<args>
-</args>
-
-
-</game_object>
-
-arbre_tropical.xml (climat=tropical, qualite du bois=4)
-<game_object name="arbre_tropical">
-<header>
-  <inherit file="arbre_type.xml"/>
-</header>
-<args>
-</args>
-<properties>
-<val_string name="climat" value="tropical"/>
-<val_named_list name="bois">
- <val_int name="qualite">4</val_int>
-</val_named_list>
-</properties>
-</game_object>
-
-decor->arbre->arbre_fruitier->cocotier
-            ->arbre_tropical->
-
-*)
-
-
 class virtual xml_object=
 object(self)
 
