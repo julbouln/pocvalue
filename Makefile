@@ -3,7 +3,7 @@ OCAMLMAKEFILE = OCamlMakefile
 PACKS=str unix extlib lua-ml xml-light unix
 LIBINSTALL_FILES=*.cmi *.cmo *.cmx *.a pocvalue.cma pocvalue.cmxa
 
-SOURCES = linkedHashtbl.ml xinclude_stubs.c value_xinclude.ml value_common.ml value_lua.ml value_xml.ml value_val.ml
+SOURCES = linkedHashtbl.ml xinclude_stubs.c value_xinclude.ml value_common.ml value_lua.ml value_xml.ml value_val.ml value_xmlparser.ml
 RESULT  = pocvalue
 
 
