@@ -180,3 +180,57 @@ object(self)
     self#foreach_object f
 
 end;;
+
+
+let list_of_linkhash h=
+  let l=ref [] in
+    LinkedHashtbl.iter (
+      fun k v->
+	l:=List.append !l [(k,v)];
+    ) h;
+    !l;;
+
+(** object handler using linkedhashtbl *)
+class ['a] generic_object_handler3=
+object(self)
+  val mutable objs=LinkedHashtbl.create 2
+
+  method add_object (id:string option) (o:'a)=
+    let nid=
+      (match id with
+	 | Some nid->(nid)
+	 | None ->("object"^string_of_int (Oo.id o)))
+       in
+      o#set_id nid;
+      LinkedHashtbl.add objs nid o;nid
+
+  method replace_object id o=
+    LinkedHashtbl.replace objs (id) o
+
+  method is_object id=
+    LinkedHashtbl.mem objs (id)
+
+  method get_object id=
+    (try
+       LinkedHashtbl.find objs (id)
+     with Not_found -> raise (Object_not_found id))
+
+  method delete_object id=
+    LinkedHashtbl.remove objs (id)
+
+  method rename_object id nid=
+    let o=self#get_object id in
+      ignore(self#add_object (Some nid) o);
+      self#delete_object id;
+    
+  method foreach_object f=
+    LinkedHashtbl.iter f objs
+
+  method foreach_object_sorted s f=
+    let ol=list_of_linkhash objs in
+    let sl=List.sort s ol in
+    let hf(v,k)=f v k in
+      List.iter hf sl;
+
+end;;
+
