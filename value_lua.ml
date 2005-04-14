@@ -100,6 +100,15 @@ object(self)
        Luahash.find vals (k)
      with
 	 Not_found -> raise (Lua_not_found (string_of_luaval k)))
+
+  method get_parent=
+    let p=new lua_obj in
+      p#from_table (
+	match (self#get_val (OLuaVal.String "parent")) with
+		 | OLuaVal.Table tbl -> tbl
+		 | _ -> (raise (Lua_error (self#get_self_id,"parent","parent")))
+	      );
+      p
 	 
   method get_self_id=
     let str=ref [] in
