@@ -46,7 +46,7 @@ type xml_entity=
 
 exception Xml_bad_entity of string;;
 exception Xml_node_binding_not_found of xml_entity_t
-exception Xml_node_no_attrib of string
+exception Xml_node_no_attrib of (string*string)
 
 
 (** debug *)
@@ -177,7 +177,7 @@ object(self)
 	(node_bindings n TAttribute);
       match !av with
 	| Some v->v
-	| None -> raise (Xml_node_no_attrib an)
+	| None -> raise (Xml_node_no_attrib (self#tag,an))
 
   (** get child node list of this node *)    
   method children=
