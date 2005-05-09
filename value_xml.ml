@@ -45,9 +45,10 @@ type xml_entity=
 (** exceptions *)
 
 exception Xml_bad_entity of string;;
-exception Xml_node_binding_not_found of xml_entity_t
+exception Xml_node_binding_not_found of (xml_entity_t)
 exception Xml_node_no_attrib of (string*string)
-
+exception Xml_node_no_pcdata of string
+(*exception Xml_node_no_tag of string*)
 
 (** debug *)
 let rec xml_entity_dump=function
@@ -191,9 +192,9 @@ object(self)
 
   (** get pcdata of this node *)
   method pcdata=
-  (* FIXME must raise a Xml_node_no_pcdata exception if no pcdata *)
-    text_of_entity(node_binding n TText)
-
+    (try 
+       text_of_entity(node_binding n TText)
+     with Xml_node_binding_not_found t->raise (Xml_node_no_pcdata self#tag))
   (** Write *)
 
   method set_tag t=

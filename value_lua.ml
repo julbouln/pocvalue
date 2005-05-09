@@ -119,9 +119,12 @@ object(self)
 	       let fid=Luahash.find tbl (OLuaVal.String "get_id") in
 		 (match fid with
 		    | OLuaVal.Function (v,f)-> 
-			str:= !str@
-			  [string_of_luaval(List.nth (f [OLuaVal.Nil]) 0)];
-			parent_id (Luahash.find tbl (OLuaVal.String "parent"))
+			(try 
+			   str:= !str@
+			     [string_of_luaval(List.nth (f [OLuaVal.Nil]) 0)];
+			   parent_id (Luahash.find tbl (OLuaVal.String "parent"))
+			 with
+			   |I.Error e->(raise (Lua_error ("?","get_id",e))))
 		    | _ -> ()
 		 )
 	   | _ ->()
