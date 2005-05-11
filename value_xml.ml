@@ -136,7 +136,9 @@ let node_of_list l=
     let rec to_xml_t_f=function
       | Text t->[PCData t]
       | Node n ->
-	  [Element (tag_of_entity(node_binding (Node n) TTag),
+	  [Element (
+		tag_of_entity(node_binding (Node n) TTag)
+		  ,
 		    List.map (fun a->attribute_of_entity a) (node_bindings (Node n) TAttribute),
 		    let tl=ref [] in
 		      List.iter (
@@ -161,8 +163,8 @@ object(self)
 
   (** get tag of this node *)
   method tag=
-    tag_of_entity(node_binding n TTag)
-    
+       tag_of_entity(node_binding n TTag)
+
   (** get attribute list of this node *)
   method attribs=
     List.map (fun a->attribute_of_entity a) (node_bindings n TAttribute)
@@ -247,6 +249,14 @@ object(self)
       XmlParser.prove xp false;
       let xt=XmlParser.parse xp (XmlParser.SString xinc) in
 (*    let xt=Xml.parse_string xinc in *)
+      n<-node_of_xml_t xt
+
+
+  method of_string str=
+    let xinc=xinclude_process_string str "tmp.xml" in
+    let xp=XmlParser.make() in
+      XmlParser.prove xp false;
+      let xt=XmlParser.parse xp (XmlParser.SString xinc) in
       n<-node_of_xml_t xt
 
 

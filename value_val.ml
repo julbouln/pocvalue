@@ -322,10 +322,13 @@ object(self)
  
   method to_xml=
     let n=new xml_node in
+      n#set_tag self#get_id;
       self#foreach_val (
-	fun k v ->
+	fun k v ->	  
 	  let cn=xmlfrom v in
-	    n#add_child cn
+	    cn#add_attrib ("name",string_of_val k);
+	    n#add_child cn;
+	    
       );
       n
 
