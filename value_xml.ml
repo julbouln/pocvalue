@@ -84,7 +84,10 @@ let node_binding n bt=
   let ne=node_of_entity n in
     (try
        LinkedHashtbl.find ne bt
-     with Not_found->raise (Xml_node_binding_not_found bt))
+     with Not_found->
+       (match bt with
+	 | TTag -> Tag "NOTSET"
+	 | _ ->raise (Xml_node_binding_not_found bt)))
 
 (** get binding list of entity type in node entity *)
 let node_bindings n bt=
@@ -94,17 +97,16 @@ let node_bindings n bt=
      with Not_found->[])
        
 (** convert a list of entity into a node entity *)
-let node_of_list l=
-  let nh=LinkedHashtbl.create 2 in
-    List.iter (
-      fun e ->
-	match e with
-	  | Tag x -> LinkedHashtbl.add nh TTag e
-	  | Attribute x -> LinkedHashtbl.add nh TAttribute e
-	  | Text x -> LinkedHashtbl.add nh TText e
-	  | Node x -> LinkedHashtbl.add nh TNode e
-    ) l;
-    nh
+let node_of_list nh l=
+  List.iter (
+    fun e ->
+      match e with
+	| Tag x -> LinkedHashtbl.replace nh TTag e
+	| Attribute x -> LinkedHashtbl.add nh TAttribute e
+	| Text x -> LinkedHashtbl.replace nh TText e
+	| Node x -> LinkedHashtbl.add nh TNode e
+  ) l
+    
 
 (** xml-light interface *)
 (* while im to lazy to make my own xml parser/writer *)
@@ -113,8 +115,8 @@ let node_of_list l=
   let node_of_xml_t xt=
     let rec of_xml_t_f=function
       | Element (tag,attrs,children)->
-	  Node 
-	    (node_of_list
+	  let nh=LinkedHashtbl.create 2 in
+	    (node_of_list nh
 	       ([Tag tag]
 		@
 		(List.map (
@@ -127,26 +129,33 @@ let node_of_list l=
 		     of_xml_t_f child
 		 ) children)
 	       )
-	    )
+	    );
+	  Node nh;
+
       | PCData data->Text data in
       of_xml_t_f xt
 
+
 (** convert an entity into a Xml.xml *)
-  let node_to_xml_t nn=
+let node_to_xml_t nn=
     let rec to_xml_t_f=function
-      | Text t->[PCData t]
       | Node n ->
-	  [Element (
-		tag_of_entity(node_binding (Node n) TTag)
-		  ,
-		    List.map (fun a->attribute_of_entity a) (node_bindings (Node n) TAttribute),
-		    let tl=ref [] in
-		      List.iter (
-			fun e->
-			  tl:= !tl@to_xml_t_f (e)
-		      ) (node_bindings (Node n) TNode);
-		      !tl
-		   )
+	  [Element (	     
+	     tag_of_entity(node_binding (Node n) TTag)	 ,
+	     List.map (fun a->attribute_of_entity a) (node_bindings (Node n) TAttribute),
+	     let tl=ref [] in
+	       List.iter (
+		 fun e->
+		   tl:= !tl@to_xml_t_f (e)
+	       ) (node_bindings (Node n) TNode);
+
+	       (try 
+		  tl:= !tl@[PCData (text_of_entity(node_binding (Node n) TText))]
+		with Xml_node_binding_not_found t->());
+		 
+		 !tl
+	   )
+	     
 	  ]
       | _ -> []	in
       List.nth (to_xml_t_f nn) 0
@@ -192,6 +201,10 @@ object(self)
     )
       (node_bindings n TNode)
 
+  method is_pcdata=
+    (try 
+       (node_binding n TText);true
+     with Xml_node_binding_not_found t->false)
   (** get pcdata of this node *)
   method pcdata=
     (try 
@@ -232,8 +245,10 @@ object(self)
     (* must raise exception if nn<>Node*)
     n<-nn
   (** init node object from a list of entity *)
-  method of_list l=
-    n<-Node (node_of_list l)
+  method of_list l=    
+      match n with
+	| Node nh->(node_of_list nh l);
+	| _ -> ()
 
   (** init node object from an Xml.xml *)	
   (* must be private *)
