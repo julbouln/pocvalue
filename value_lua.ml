@@ -89,11 +89,18 @@ object(self)
   initializer
     interp#set_global_val "self" (OLuaVal.Table vals); 
 
+  method private lerror id v e=
+    (raise (Lua_error (id,v,e)))
+
+  method private lwarning id v e=
+    print_string ("Lua warning: "^id^" - "^v^" : "^e);print_newline();
+
   method del_val k=
     Luahash.remove vals (k);
 
   method set_val k (v:OLuaVal.value)=
     Luahash.replace vals ~key:(k) ~data:v;
+  
       
   method get_val k=
     (try
@@ -106,7 +113,7 @@ object(self)
       p#from_table (
 	match (self#get_val (OLuaVal.String "parent")) with
 		 | OLuaVal.Table tbl -> tbl
-		 | _ -> (raise (Lua_error (self#get_self_id,"parent","parent")))
+		 | _ -> self#lerror self#get_self_id "parent" "parent"
 	      );
       p
 	 
@@ -125,6 +132,8 @@ object(self)
 			   parent_id (Luahash.find tbl (OLuaVal.String "parent"))
 			 with
 			   |I.Error e->(raise (Lua_error ("?","get_id",e))))
+(*			   | I.Error e->self#lerror "?" "get_id" e) *)
+			  
 		    | _ -> ()
 		 )
 	   | _ ->()
@@ -136,14 +145,19 @@ object(self)
       str:= ["root"]@(List.rev !str)@[string_of_luaval (List.nth id 0)];
       String.concat "." !str;
 
+  
+
   method get_fun k=
     let v=self#get_val k in
       (match v with
       | OLuaVal.Function (v,f)-> 
-	  (try 
-	     f
-	   with
-	     |I.Error e->(raise (Lua_error (self#get_self_id,string_of_luaval k,e)))
+	  (fun v->
+	     (try 
+		f v
+	      with
+		|I.Error e->self#lwarning self#get_self_id (string_of_luaval k) e;
+		    [OLuaVal.Nil]
+	     )
 	  )
       | _ -> fun l->[OLuaVal.Nil]
       )
@@ -166,7 +180,7 @@ object(self)
     (try
       interp#parse e;
      with
-       |I.Error e->
+       | I.Error e->
 
 	   (raise (Lua_error (self#get_self_id,"",e)))
 	   
