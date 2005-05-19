@@ -93,7 +93,7 @@ object(self)
     (raise (Lua_error (id,v,e)))
 
   method private lwarning id v e=
-    print_string ("Lua warning: "^id^" - "^v^" : "^e);print_newline();
+    print_string ("Lua warning: "^id^"."^v^" : "^e);print_newline();
 
   method del_val k=
     Luahash.remove vals (k);
