@@ -289,6 +289,12 @@ object(self)
   method to_string=
     Xml.to_string (node_to_xml_t n)
 
+
+  method to_file f=
+    let fo=open_out f in
+      output_string fo (self#to_string); 
+      close_out fo;
+
 end;;
 
 (** like lua_object *)

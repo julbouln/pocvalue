@@ -1,5 +1,5 @@
 description = "Pocengine data manager"
 requires = "str,unix,extlib,lua-ml,xml-light"
-version = "0.2.0"
+version = "0.3.0"
 archive(byte) = "pocvalue.cma"
 archive(native) = "pocvalue.cmxa"
