@@ -190,5 +190,22 @@ object
 end;;
 
 
+open Value_val;;
+
+class xml_val_generic_list_parser otag=
+object(self)
+  inherit xml_parser
+  val mutable vals=new val_generic_handler
+
+  method parse_attr k v=()
+
+  method get_val=vals
+
+  method parse_child k v=
+    match k with
+      | tag when tag=otag ->
+	    vals#from_xml v
+      | _ -> ()
+end;;
 
 
