@@ -45,7 +45,8 @@ object(self)
 val mutable interp=I.mk()
 
 initializer
-  self#set_global_val "randomize" (OLuaVal.efunc (OLuaVal.int **->> OLuaVal.int) randomize)
+  self#set_global_val "randomize" (OLuaVal.efunc (OLuaVal.int **->> OLuaVal.int) randomize);
+  self#set_global_val "int_of_string" (OLuaVal.efunc (OLuaVal.string **->> OLuaVal.int) int_of_string)
 
 method set_global_val n f=
  I.register_globals

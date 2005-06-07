@@ -91,6 +91,8 @@ object(self)
   method clear()=
     Hashtbl.clear objs;
 
+  method objs_count=Hashtbl.length objs
+
   (** add object in handler 
       if id is None then handler generate an automatic id 
   *)
@@ -146,6 +148,8 @@ end;;
 class ['a] generic_object_handler2=
 object(self)
   val mutable objs=DynArray.create()
+
+  method objs_count=DynArray.length objs
 
   method clear()=
     DynArray.clear objs
@@ -222,6 +226,8 @@ let list_of_linkhash h=
 class ['a] generic_object_handler3=
 object(self)
   val mutable objs=LinkedHashtbl.create 2
+
+  method objs_count=LinkedHashtbl.length objs
 
   method add_object (id:string option) (o:'a)=
     let nid=
