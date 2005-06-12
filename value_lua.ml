@@ -37,6 +37,20 @@ let ( **->> ) x y = x **-> OLuaVal.result y
 
 (** lua classes *)
 
+
+let lua_globals=
+  Global.empty("lua_globals");;
+
+let generic_lua_globals=
+  [
+    ("randomize", (OLuaVal.efunc (OLuaVal.int **->> OLuaVal.int) randomize));
+    ("int_of_string", (OLuaVal.efunc (OLuaVal.string **->> OLuaVal.int) int_of_string));
+
+  ];;
+
+Global.set lua_globals generic_lua_globals;;
+
+
 (** interpret string *)
 class lua_interp=
 object(self)
@@ -45,8 +59,11 @@ object(self)
 val mutable interp=I.mk()
 
 initializer
-  self#set_global_val "randomize" (OLuaVal.efunc (OLuaVal.int **->> OLuaVal.int) randomize);
-  self#set_global_val "int_of_string" (OLuaVal.efunc (OLuaVal.string **->> OLuaVal.int) int_of_string)
+let gl=Global.get lua_globals in
+  List.iter (
+    fun (n,g)->
+    self#set_global_val n g
+  ) gl;
 
 method set_global_val n f=
  I.register_globals
@@ -80,6 +97,10 @@ let string_of_luaval=function
   | OLuaVal.Number s->string_of_float s
   | OLuaVal.Nil -> "nil"
   | _ -> raise (Lua_bad_type "string");;
+
+let int_of_luaval=function
+  | OLuaVal.Number s->int_of_float s
+  | _ -> raise (Lua_bad_type "int");;
 
 (** the lua obj *)
 class lua_obj=
