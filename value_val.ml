@@ -23,11 +23,9 @@ open Value_lua;;
 
 (** Val system with conversion between OCaml, XML and Lua *)
 
-exception Bad_val_type of string;;
-exception Val_not_found of string;;
+(** {2 Types} *)
 
 (** Generic val type *)
-
 type val_generic=
     [
     | `Int of int
@@ -39,6 +37,31 @@ type val_generic=
     ]
 ;;
 
+
+
+type val_format_t=
+  | TValList
+  | TValXml
+  | TValXmlString
+  | TValLua
+  | TValLuaString;;
+
+type ('a) val_format=
+  | ValList of 'a list
+  | ValXml of xml_node
+  | ValXmlString of string
+  | ValLua of lua_obj
+  | ValLuaString of string;;
+
+
+(** {2 Exceptions} *)
+
+exception Bad_val_type of string;;
+exception Val_not_found of string;;
+
+(** {2 Functions} *)
+
+(** {3 XML conversion} *)
 
 let xml_of_val v=
   let on=new xml_node in
@@ -68,6 +91,8 @@ let val_of_xml x=
     | _ -> `Nil
 
 
+(** {3 Lua conversion} *)
+
 let lua_of_val=function
   | `Int i->OLuaVal.Number (float_of_int i) 
   | `String s->OLuaVal.String s
@@ -87,6 +112,8 @@ let val_of_lua=function
   | OLuaVal.Nil -> `Nil
   | _ -> `Nil
 ;;
+
+(** {3 Val conversion} *)
 
 let int_of_val=function
   | `Int v->v
@@ -118,23 +145,11 @@ let text_of_val=function
   | `Float v->string_of_float v
   | _->raise (Bad_val_type "text");;
 
-(** Ocaml & Lua & XML interface *)
-
-type val_format_t=
-  | TValList
-  | TValXml
-  | TValXmlString
-  | TValLua
-  | TValLuaString;;
-
-type ('a) val_format=
-  | ValList of 'a list
-  | ValXml of xml_node
-  | ValXmlString of string
-  | ValLua of lua_obj
-  | ValLuaString of string;;
 
 
+(** {2 Classes} *)
+
+(** Ocaml & Lua & XML interface class *)
 class ['a] val_handler (xmlfrom:'a->xml_node) (xmlto:xml_node->'a) (luafrom:'a->OLuaVal.value) (luato:OLuaVal.value->'a)=
 object(self)
   inherit generic_object

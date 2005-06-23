@@ -26,13 +26,25 @@ Random.self_init();;
 let randomize n= 
  (Random.int n)
 
-(** Generic common classes *)
+(** convert a hashtbl in list *)
+let list_of_hash h=
+  let l=ref [] in
+    Hashtbl.iter (
+      fun k v->
+	l:=List.append !l [(k,v)];
+    ) h;
+    !l;;
 
-(** exceptions *)
+
+(** {2 Exceptions} *)
 
 exception Object_id_not_set;;
 exception Object_type_not_set;;
 exception Object_not_found of string;;
+
+(** {2 Classes} *)
+
+(** {3 Objects classes} *)
 
 (** the most lowlevel object *)
 class generic_object=
@@ -72,25 +84,34 @@ object
 
 end;;
 
-(** convert a hashtbl in list *)
-let list_of_hash h=
-  let l=ref [] in
-    Hashtbl.iter (
-      fun k v->
-	l:=List.append !l [(k,v)];
-    ) h;
-    !l;;
+(** {3 Objects handlers classes} *)
 
+(** virtual objects handler *)
+class virtual ['a] virtual_object_handler=
+object
+  method virtual clear: unit->unit
+  method virtual objs_count: int
+  method virtual add_object: string option->'a->string
+  method virtual replace_object: string -> 'a-> unit
+  method virtual is_object: string -> bool
+  method virtual get_object: string -> 'a
+  method virtual delete_object: string->unit
+  method virtual rename_object: string->string->unit
+  method virtual foreach_object: (string->'a->unit)->unit
+(*  method virtual foreach_object_sorted: ((string->'a)->(string->'a)->int)->(string->'a->unit)->unit *)
+end;;
 
 (** object handler using hashtbl *)
 class ['a] generic_object_handler=
 object(self)
+  inherit ['a] virtual_object_handler
   val mutable objs=Hashtbl.create 2
 
   (** delete all objects in handler *)
   method clear()=
     Hashtbl.clear objs;
 
+  (** count objects in handler *)
   method objs_count=Hashtbl.length objs
 
   (** add object in handler 
@@ -142,11 +163,12 @@ object(self)
 
 end;;
 
-(** other implementation of handler, same functions *)
+(** other implementations of handler, same methods *)
 
 (** object handler using array *)
 class ['a] generic_object_handler2=
 object(self)
+  inherit ['a] virtual_object_handler
   val mutable objs=DynArray.create()
 
   method objs_count=DynArray.length objs
@@ -225,7 +247,11 @@ let list_of_linkhash h=
 (** object handler using linkedhashtbl *)
 class ['a] generic_object_handler3=
 object(self)
+  inherit ['a] virtual_object_handler
   val mutable objs=LinkedHashtbl.create 2
+
+  method clear()=
+    LinkedHashtbl.clear objs;
 
   method objs_count=LinkedHashtbl.length objs
 

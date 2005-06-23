@@ -26,7 +26,7 @@ open Value_xinclude;;
 
 (** Xml object representation *)
 
-(** types *)
+(** {2 Types} *)
 
 (** node binding entity type *)
 type xml_entity_t=
@@ -42,7 +42,7 @@ type xml_entity=
   | Text of string
   | Node of (xml_entity_t,xml_entity) LinkedHashtbl.t;;
 
-(** exceptions *)
+(** {2 Exceptions} *)
 
 exception Xml_bad_entity of string;;
 exception Xml_node_binding_not_found of (xml_entity_t)
@@ -58,7 +58,10 @@ let rec xml_entity_dump=function
   | _ -> ()
 
 
-(** conversion funcs *)
+(** {2 Functions} *)
+
+
+(** {3 Convertion functions} *)
 
 let tag_of_entity=function
   | Tag t->t
@@ -77,7 +80,7 @@ let node_of_entity=function
   | _ -> raise (Xml_bad_entity "node")
 
 
-(** node funcs *)
+(** {3 Node functions} *)
 
 (** get binding of entity type in node entity *)
 let node_binding n bt=
@@ -161,7 +164,7 @@ let node_to_xml_t nn=
       List.nth (to_xml_t_f nn) 0
 
 
-
+(** {2 Classes} *)
 
 (** the xml node class *)
 class xml_node=

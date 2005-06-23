@@ -24,9 +24,7 @@ end;;
 
 
 
-
-
-(** General parsers *)
+(** {3 General parsers} *)
 
 (** int parser of form <tag a="int"> *)
 class xml_int_parser a=

@@ -22,7 +22,7 @@ open Value_common;;
 (** Lua object representation *)
 
 
-(** lua-ml related *)
+(** {2 Lua-ml related} *)
 
 module T  = Lua.Lib.Combine.T1 (Luaiolib.T)
 module WT = Lua.Lib.WithType (T)
@@ -35,8 +35,8 @@ module OLuaVal = I.Value
 let ( **-> ) = OLuaVal. ( **-> )
 let ( **->> ) x y = x **-> OLuaVal.result y
 
-(** lua classes *)
 
+(** {2 Globals} *)
 
 let lua_globals=
   Global.empty("lua_globals");;
@@ -51,7 +51,29 @@ let generic_lua_globals=
 Global.set lua_globals generic_lua_globals;;
 
 
-(** interpret string *)
+(** {2 Exceptions} *)
+
+exception Lua_not_found of string;;
+exception Lua_bad_type of string;;
+exception Lua_error of string*string*string;;
+
+(** {2 Functions} *)
+
+(** convert luaval to string *)
+let string_of_luaval=function
+  | OLuaVal.String s->s
+  | OLuaVal.Number s->string_of_float s
+  | OLuaVal.Nil -> "nil"
+  | _ -> raise (Lua_bad_type "string");;
+
+let int_of_luaval=function
+  | OLuaVal.Number s->int_of_float s
+  | _ -> raise (Lua_bad_type "int");;
+
+
+(** {2 Classes} *)
+
+(** interpreter class *)
 class lua_interp=
 object(self)
 
@@ -81,26 +103,6 @@ I.getglobal interp (OLuaVal.String f)
 method parse e= I.dostring interp e
 
 end;;
-
-
-(** lua object part *)
-
-(** exceptions *)
-
-exception Lua_not_found of string;;
-exception Lua_bad_type of string;;
-exception Lua_error of string*string*string;;
-
-(** convert luaval to string *)
-let string_of_luaval=function
-  | OLuaVal.String s->s
-  | OLuaVal.Number s->string_of_float s
-  | OLuaVal.Nil -> "nil"
-  | _ -> raise (Lua_bad_type "string");;
-
-let int_of_luaval=function
-  | OLuaVal.Number s->int_of_float s
-  | _ -> raise (Lua_bad_type "int");;
 
 (** the lua obj *)
 class lua_obj=
