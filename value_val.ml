@@ -130,8 +130,8 @@ let string_of_val=function
   | _->raise (Bad_val_type "string");;
 
 let float_of_val=function
-  | `Int v->v
-  | `Float v->float_of_int v
+  | `Int v->float_of_int v
+  | `Float v->v
   | _->raise (Bad_val_type "float");;
 
 let bool_of_val=function
