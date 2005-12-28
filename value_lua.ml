@@ -44,6 +44,7 @@ let lua_globals=
 
 let generic_lua_globals=
   [
+    ("pi",(OLuaVal.efunc (OLuaVal.unit **->> OLuaVal.float) (fun()-> 3.14159265)));
     ("randomize", (OLuaVal.efunc (OLuaVal.int **->> OLuaVal.int) randomize));
     ("int_of_string", (OLuaVal.efunc (OLuaVal.string **->> OLuaVal.int) int_of_string));
 
