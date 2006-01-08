@@ -20,10 +20,6 @@
 
 
 
-open Xml;;
-open XmlParser;;
-
-open Value_xinclude;;
 
 (** Xml object representation *)
 
@@ -41,7 +37,9 @@ type xml_entity=
   | Tag of string
   | Attribute of (string*string)
   | Text of string
-  | Node of (xml_entity_t,xml_entity) LinkedHashtbl.t;;
+  | Node of (xml_entity_t,xml_entity) LinkedHashtbl.t
+  | Comment of string
+;;
 
 (** {2 Exceptions} *)
 
@@ -109,57 +107,75 @@ let node_of_list nh l=
 	| Attribute x -> LinkedHashtbl.add nh TAttribute e
 	| Text x -> LinkedHashtbl.replace nh TText e
 	| Node x -> LinkedHashtbl.add nh TNode e
+	| _ ->()
   ) l
     
 
 (** xml-light interface *)
 (* while im to lazy to make my own xml parser/writer *)
 
+exception Yaxi_error 
+
 (** convert a Xml.xml into an entity node *)
   let node_of_xml_t xt=
     let rec of_xml_t_f=function
-      | Element (tag,attrs,children)->
+      | Yaxi_xml.Root l->
+	  of_xml_t_f (List.nth !l 0)
+      | Yaxi_xml.Element (p,name,nss,attrs,children)->
 	  let nh=LinkedHashtbl.create 2 in
 	    (node_of_list nh
-	       ([Tag tag]
+	       ([Tag (Yaxi_xml.string_of_name name)]
 		@
 		(List.map (
 		   fun att->
-		     Attribute att
-		 ) attrs)
+		     match att with
+			 Yaxi_xml.Attribute (p,name,v)->
+			   Attribute (Yaxi_xml.string_of_name name,v)
+		       | _ -> raise Yaxi_error
+		 ) !attrs)
 		@
 		(List.map (
 		   fun child ->
 		     of_xml_t_f child
-		 ) children)
+		 ) !children)
 	       )
 	    );
 	  Node nh;
 
-      | PCData data->Text data in
+      | Yaxi_xml.Text (p,data)->Text data 
+      | Yaxi_xml.Comment (p,data)-> Comment data
+      | _ -> raise Yaxi_error
+in
       of_xml_t_f xt
+
 
 
 (** convert an entity into a Xml.xml *)
 let node_to_xml_t nn=
-    let rec to_xml_t_f=function
+  let ns=("",`None) in
+  let rec to_xml_t_f=function
       | Node n ->
-	  [Element (	     
-	     tag_of_entity(node_binding (Node n) TTag)	 ,
-	     List.map (fun a->attribute_of_entity a) (node_bindings (Node n) TAttribute),
-	     let tl=ref [] in
+	  [Yaxi_xml.new_element 
+	    (ns,(tag_of_entity(node_binding (Node n) TTag)))
+	    ~namespaces:([(Yaxi_xml.new_namespace ns)])
+	    ~attributes:(List.map (fun a->
+				     let (n,v)=attribute_of_entity a in
+				       Yaxi_xml.new_attribute (ns,n) v       
+				  ) (node_bindings (Node n) TAttribute))
+	    ~children:
+	     (let tl=ref [] in
 	       List.iter (
 		 fun e->
 		   tl:= !tl@to_xml_t_f (e)
 	       ) (node_bindings (Node n) TNode);
 
 	       (try 
-		  tl:= !tl@[PCData (text_of_entity(node_binding (Node n) TText))]
+		  tl:= !tl@[Yaxi_xml.new_text (text_of_entity(node_binding (Node n) TText))]
 		with Xml_node_binding_not_found t->());
 		 
 		 !tl
-	   )
-	     
+	     )
+	     ()
 	  ]
       | _ -> []	in
       List.nth (to_xml_t_f nn) 0
@@ -263,20 +279,16 @@ object(self)
       with automatic processing of xinclude
   *)
   method of_file f=
-    let xinc=xinclude_process_file f in
-    let xp=XmlParser.make() in
-      XmlParser.prove xp false;
-      let xt=XmlParser.parse xp (XmlParser.SString xinc) in
+    let xt=Yaxi_xmlparser.parse_file f in
 (*    let xt=Xml.parse_string xinc in *)
-      n<-node_of_xml_t xt
+      Yaxi_xinclude.process xt;
+      n<-node_of_xml_t xt.Yaxi_xml.root
 
 
   method of_string str=
-    let xinc=xinclude_process_string str "tmp.xml" in
-    let xp=XmlParser.make() in
-      XmlParser.prove xp false;
-      let xt=XmlParser.parse xp (XmlParser.SString xinc) in
-      n<-node_of_xml_t xt
+    let xt=Yaxi_xmlparser.parse_string str in
+      Yaxi_xinclude.process xt;
+      n<-node_of_xml_t xt.Yaxi_xml.root
 
 
 (** Export *)
@@ -291,7 +303,7 @@ object(self)
 
   (** convert this node object to string *)      
   method to_string=
-    Xml.to_string (node_to_xml_t n)
+    Yaxi_xml.pretty_string_of_node "" (node_to_xml_t n)
 
 
   method to_file f=
