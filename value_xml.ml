@@ -105,7 +105,7 @@ let node_of_list nh l=
       match e with
 	| Tag x -> LinkedHashtbl.replace nh TTag e
 	| Attribute x -> LinkedHashtbl.add nh TAttribute e
-	| Text x -> LinkedHashtbl.replace nh TText e
+	| Text x -> LinkedHashtbl.add nh TText e
 	| Node x -> LinkedHashtbl.add nh TNode e
 	| _ ->()
   ) l
@@ -228,7 +228,12 @@ object(self)
   (** get pcdata of this node *)
   method pcdata=
     (try 
-       text_of_entity(node_binding n TText)
+       let buf=Buffer.create 1024 in
+	 List.iter (fun nodeb->
+		      Buffer.add_string buf (text_of_entity nodeb)
+		   )
+	   (node_bindings n TText);
+	 Buffer.contents buf
      with Xml_node_binding_not_found t->raise (Xml_node_no_pcdata self#tag))
   (** Write *)
 
@@ -255,7 +260,7 @@ object(self)
   method set_pcdata d=
     match n with
       | Node nh->
-	  LinkedHashtbl.replace nh TText (Text d)
+	  LinkedHashtbl.add nh TText (Text d)
       | _ -> ()
 
   (** Import *)
